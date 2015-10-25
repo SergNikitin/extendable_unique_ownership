@@ -1,5 +1,5 @@
-#ifndef _SHAREABLE_UNIQUE_OWNERSHIP_
-#define _SHAREABLE_UNIQUE_OWNERSHIP_
+#ifndef _SHAREABLE_UNIQUE_OWNERSHIP_IMPL_
+#define _SHAREABLE_UNIQUE_OWNERSHIP_IMPL_
 
 template <typename T>
 OwningRef<T>::ResourceOwner::ResourceOwner() : markedForDestruction(false) {}
@@ -114,4 +114,4 @@ void ScopedRef<T>::reset() {
     resource.reset();
 }
 
-#endif // _SHAREABLE_UNIQUE_OWNERSHIP_
+#endif // _SHAREABLE_UNIQUE_OWNERSHIP_IMPL_

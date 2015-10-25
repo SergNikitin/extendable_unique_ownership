@@ -86,7 +86,7 @@ public:
     T* operator->() const;
 
     bool empty() const;
-    bool reset();
+    void reset();
 
 private:
     using Resource = typename WeakRef<T>::Resource;
@@ -99,6 +99,6 @@ private:
     std::shared_ptr<Resource> resource;
 };
 
-#include "scoped_lifetime_management_impl.h"
+#include "shareable_unique_ownership_impl.h"
 
 #endif // _SHAREABLE_UNIQUE_OWNERSHIP_
