@@ -5,7 +5,7 @@ template <typename T>
 OwningRef<T>::ResourceOwner::ResourceOwner() : markedForDestruction(false) {}
 
 template <typename T>
-OwningRef<T>::ResourceOwner::ResourceOwner(std::unique_ptr<T>&& resource)
+OwningRef<T>::ResourceOwner::ResourceOwner(std::unique_ptr<T> resource)
     : markedForDestruction(false)
     , resource(std::move(resource)) {}
 
@@ -29,7 +29,7 @@ OwningRef<T>::OwningRef(T* resource)
     ) {}
 
 template <typename T>
-OwningRef<T>::OwningRef(std::unique_ptr<T>&& resource)
+OwningRef<T>::OwningRef(std::unique_ptr<T> resource)
     : resource(
         std::make_shared<ResourceOwner>(
             std::move(resource)
@@ -53,7 +53,7 @@ T* OwningRef<T>::operator->() const {
 
 template <typename T>
 void OwningRef<T>::reset() {
-    if (bool(resource)) {
+    if (resource != nullptr) {
         resource->markedForDestruction.store(true);
         resource.reset();
     }
@@ -75,11 +75,9 @@ WeakRef<T>::WeakRef(const OwningRef<T>& owner) : resource(owner.resource) {}
 template <typename T>
 ScopedRef<T> WeakRef<T>::lock() const {
     auto sharedPtr = resource.lock();
-    if (bool(sharedPtr) && notMarkedForDestruction(sharedPtr)) {
-        return ScopedRef<T>(sharedPtr);
-    }
-
-    return ScopedRef<T>();
+    return notMarkedForDestruction(sharedPtr.get())
+        ? ScopedRef<T>(sharedPtr)
+        : ScopedRef<T>();
 }
 
 template <typename T>
@@ -88,10 +86,8 @@ void WeakRef<T>::reset() {
 }
 
 template <typename T>
-/*static*/ bool WeakRef<T>::notMarkedForDestruction(
-    const std::shared_ptr<Resource>& resource
-) {
-    return !resource->markedForDestruction.load();
+/*static*/ bool WeakRef<T>::notMarkedForDestruction(const Resource* resource) {
+    return resource != nullptr && !resource->markedForDestruction.load();
 }
 
 
@@ -100,13 +96,18 @@ ScopedRef<T>::ScopedRef(const std::shared_ptr<Resource>& resource)
     : resource(resource) {}
 
 template <typename T>
-T* ScopedRef<T>::operator->() const {
+T* ScopedRef<T>::get() const {
     return resource->get();
 }
 
 template <typename T>
+T* ScopedRef<T>::operator->() const {
+    return get();
+}
+
+template <typename T>
 bool ScopedRef<T>::empty() const {
-    return !bool(resource);
+    return resource == nullptr;
 }
 
 template <typename T>
