@@ -66,8 +66,8 @@ public:
     void reset();
 
 private:
-	friend class weak_extender<T>;
-	friend class scoped_extender<T>;
+    friend class weak_extender<T>;
+    friend class scoped_extender<T>;
 
     struct resource_owner;
 
