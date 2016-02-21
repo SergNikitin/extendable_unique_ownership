@@ -186,6 +186,6 @@ private:
     strong_lifetime_link link;
 };
 
-#include "shareable_unique_ownership_impl.h"
+#include "extendable_unique_ownership_impl.h"
 
 #endif // _EXTENDABLE_UNIQUE_OWNERSHIP_
