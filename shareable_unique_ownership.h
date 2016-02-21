@@ -1,25 +1,25 @@
-#ifndef _SHAREABLE_UNIQUE_OWNERSHIP_
-#define _SHAREABLE_UNIQUE_OWNERSHIP_
+#ifndef _EXTENDABLE_UNIQUE_OWNERSHIP_
+#define _EXTENDABLE_UNIQUE_OWNERSHIP_
 
 #include <atomic>
 #include <memory>
 
-template <typename T> class WeakRef;
-template <typename T> class ScopedRef;
+template <typename T> class weak_extender;
+template <typename T> class scoped_extender;
 
 template <typename T>
-class OwningRef {
+class unique_extendable_ptr {
 public:
-    OwningRef() = default;
-    explicit OwningRef(std::unique_ptr<T>);
-    explicit OwningRef(T*);
+    unique_extendable_ptr() = default;
+    explicit unique_extendable_ptr(std::unique_ptr<T>);
+    explicit unique_extendable_ptr(T*);
 
-    ~OwningRef();
+    ~unique_extendable_ptr();
 
-    OwningRef(const OwningRef&) = delete;
-    OwningRef& operator=(const OwningRef&) = delete;
-    OwningRef(OwningRef&&) = default;
-    OwningRef& operator=(OwningRef&&) = default;
+    unique_extendable_ptr(const unique_extendable_ptr&) = delete;
+    unique_extendable_ptr& operator=(const unique_extendable_ptr&) = delete;
+    unique_extendable_ptr(unique_extendable_ptr&&) = default;
+    unique_extendable_ptr& operator=(unique_extendable_ptr&&) = default;
 
     T* get() const;
     T* operator->() const;
@@ -27,65 +27,69 @@ public:
     void reset();
 
 private:
-    friend class WeakRef<T>;
+	friend class weak_extender<T>;
+	friend class scoped_extender<T>;
 
-    struct ResourceOwner;
+    struct resource_owner;
 
-    std::shared_ptr<ResourceOwner> resource;
+    using strong_lifetime_link = std::shared_ptr<resource_owner>;
+    using weak_lifetime_link = std::weak_ptr<resource_owner>;
+
+    strong_lifetime_link resource;
 };
 
 template <typename T>
-struct OwningRef<T>::ResourceOwner {
+struct unique_extendable_ptr<T>::resource_owner {
 public:
-    ResourceOwner();
-    explicit ResourceOwner(std::unique_ptr<T>);
+    resource_owner();
+    explicit resource_owner(std::unique_ptr<T>);
 
-    ResourceOwner(const ResourceOwner&) = delete;
-    ResourceOwner& operator=(const ResourceOwner&) = delete;
-    ResourceOwner(ResourceOwner&&) = delete;
-    ResourceOwner& operator=(ResourceOwner&&) = delete;
+    resource_owner(const resource_owner&) = delete;
+    resource_owner& operator=(const resource_owner&) = delete;
+    resource_owner(resource_owner&&) = delete;
+    resource_owner& operator=(resource_owner&&) = delete;
 
     T* get() const;
     T* operator->() const;
 
     std::unique_ptr<T> resource;
-    std::atomic_bool markedForDestruction;
+    std::atomic_bool marked_for_destruction;
 };
 
 template <typename T, typename... CtorArgTypes>
-OwningRef<T> makeOwning(CtorArgTypes&&... ctorArgs);
+unique_extendable_ptr<T> make_unique_extendable(CtorArgTypes&&... ctorArgs);
 
 template <typename T>
-class WeakRef
-{
+class weak_extender {
 public:
-    WeakRef() = default;
-    explicit WeakRef(const OwningRef<T>&);
+    weak_extender() = default;
+    explicit weak_extender(const unique_extendable_ptr<T>&);
 
-    WeakRef(const WeakRef&) = default;
-    WeakRef& operator=(const WeakRef&) = default;
-    WeakRef(WeakRef&&) = default;
-    WeakRef& operator=(WeakRef&&) = default;
+    weak_extender(const weak_extender&) = default;
+    weak_extender& operator=(const weak_extender&) = default;
+    weak_extender(weak_extender&&) = default;
+    weak_extender& operator=(weak_extender&&) = default;
 
-    ScopedRef<T> lock() const;
+    scoped_extender<T> lock() const;
     void reset();
 
 private:
-    friend class ScopedRef<T>;
+    friend class scoped_extender<T>;
 
-    using Resource = typename OwningRef<T>::ResourceOwner;
+    using resource = typename unique_extendable_ptr<T>::resource_owner;
+    using weak_lifetime_link = typename unique_extendable_ptr<T>::weak_lifetime_link;
 
-    static bool notMarkedForDestruction(const Resource*);
+    static bool not_marked_for_destruction(const resource*);
 
-    std::weak_ptr<Resource> resource;
+    weak_lifetime_link link;
 };
 
 template <typename T>
-class ScopedRef {
+class scoped_extender {
 public:
-    ScopedRef(const ScopedRef&) = delete;
-    ScopedRef& operator=(const ScopedRef&) = delete;
-    ScopedRef& operator=(ScopedRef&&) = delete;
+    scoped_extender(const scoped_extender&) = delete;
+    scoped_extender& operator=(const scoped_extender&) = delete;
+    scoped_extender& operator=(scoped_extender&&) = delete;
 
     T* get() const;
     T* operator->() const;
@@ -94,18 +98,18 @@ public:
     void reset();
 
 private:
-    friend class WeakRef<T>;
+    friend class weak_extender<T>;
 
-    using Resource = typename WeakRef<T>::Resource;
+    using strong_lifetime_link = typename unique_extendable_ptr<T>::strong_lifetime_link;
 
-    ScopedRef() = default;
-    explicit ScopedRef(const std::shared_ptr<Resource>&);
+    scoped_extender() = default;
+    explicit scoped_extender(strong_lifetime_link);
 
-    ScopedRef(ScopedRef&&) = default;
+    scoped_extender(scoped_extender&&) = default;
 
-    std::shared_ptr<Resource> resource;
+    strong_lifetime_link link;
 };
 
 #include "shareable_unique_ownership_impl.h"
 
-#endif // _SHAREABLE_UNIQUE_OWNERSHIP_
+#endif // _EXTENDABLE_UNIQUE_OWNERSHIP_

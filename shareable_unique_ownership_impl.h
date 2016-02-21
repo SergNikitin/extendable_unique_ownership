@@ -2,117 +2,117 @@
 #define _SHAREABLE_UNIQUE_OWNERSHIP_IMPL_
 
 template <typename T>
-OwningRef<T>::ResourceOwner::ResourceOwner() : markedForDestruction(false) {}
+unique_extendable_ptr<T>::resource_owner::resource_owner()
+    : marked_for_destruction(false) {}
 
 template <typename T>
-OwningRef<T>::ResourceOwner::ResourceOwner(std::unique_ptr<T> resource)
-    : markedForDestruction(false)
+unique_extendable_ptr<T>::resource_owner::resource_owner(
+    std::unique_ptr<T> resource)
+    : marked_for_destruction(false)
     , resource(std::move(resource)) {}
 
 template <typename T>
-T* OwningRef<T>::ResourceOwner::get() const {
+T* unique_extendable_ptr<T>::resource_owner::get() const {
     return resource.get();
 }
 
 template <typename T>
-T* OwningRef<T>::ResourceOwner::operator->() const {
+T* unique_extendable_ptr<T>::resource_owner::operator->() const {
     return get();
 }
 
 
 template <typename T>
-OwningRef<T>::OwningRef(T* resource)
+unique_extendable_ptr<T>::unique_extendable_ptr(T* resource)
     : resource(
-        std::make_shared<ResourceOwner>(
+        std::make_shared<resource_owner>(
             std::unique_ptr<T>(resource)
         )
     ) {}
 
 template <typename T>
-OwningRef<T>::OwningRef(std::unique_ptr<T> resource)
+unique_extendable_ptr<T>::unique_extendable_ptr(std::unique_ptr<T> resource)
     : resource(
-        std::make_shared<ResourceOwner>(
+        std::make_shared<resource_owner>(
             std::move(resource)
         )
     ) {}
 
 template <typename T>
-OwningRef<T>::~OwningRef() {
+unique_extendable_ptr<T>::~unique_extendable_ptr() {
     reset();
 }
 
 template <typename T>
-T* OwningRef<T>::get() const {
+T* unique_extendable_ptr<T>::get() const {
     return resource->get();
 }
 
 template <typename T>
-T* OwningRef<T>::operator->() const {
+T* unique_extendable_ptr<T>::operator->() const {
     return get();
 }
 
 template <typename T>
-void OwningRef<T>::reset() {
+void unique_extendable_ptr<T>::reset() {
     if (resource != nullptr) {
-        resource->markedForDestruction.store(true);
+        resource->marked_for_destruction.store(true);
         resource.reset();
     }
 }
 
 template<typename T, typename... CtorArgTypes>
-OwningRef<T> makeOwning(CtorArgTypes&&... ctorArgs) {
-    return OwningRef<T>(
-        std::make_unique<T>(
-            std::forward<CtorArgTypes>(ctorArgs)...
-        )
-    );
+unique_extendable_ptr<T> make_unique_extendable(CtorArgTypes&&... ctorArgs) {
+    auto unique = std::make_unique<T>(std::forward<CtorArgTypes>(ctorArgs)...);
+    return unique_extendable_ptr<T>(std::move(unique));
 }
 
 
 template <typename T>
-WeakRef<T>::WeakRef(const OwningRef<T>& owner) : resource(owner.resource) {}
+weak_extender<T>::weak_extender(const unique_extendable_ptr<T>& owner)
+    : link(owner.resource) {}
 
 template <typename T>
-ScopedRef<T> WeakRef<T>::lock() const {
-    auto sharedPtr = resource.lock();
-    return notMarkedForDestruction(sharedPtr.get())
-        ? ScopedRef<T>(sharedPtr)
-        : ScopedRef<T>();
+scoped_extender<T> weak_extender<T>::lock() const {
+    auto strong_link = link.lock();
+    return not_marked_for_destruction(strong_link.get())
+        ? scoped_extender<T>(strong_link)
+        : scoped_extender<T>();
 }
 
 template <typename T>
-void WeakRef<T>::reset() {
-    resource.reset();
+void weak_extender<T>::reset() {
+    link.reset();
 }
 
 template <typename T>
-/*static*/ bool WeakRef<T>::notMarkedForDestruction(const Resource* resource) {
-    return resource != nullptr && !resource->markedForDestruction.load();
+/*static*/ bool weak_extender<T>::not_marked_for_destruction(const resource* resource) {
+    return resource != nullptr && !resource->marked_for_destruction.load();
 }
 
 
 template <typename T>
-ScopedRef<T>::ScopedRef(const std::shared_ptr<Resource>& resource)
-    : resource(resource) {}
+scoped_extender<T>::scoped_extender(strong_lifetime_link link)
+    : link(std::move(link)) {}
 
 template <typename T>
-T* ScopedRef<T>::get() const {
-    return resource->get();
+T* scoped_extender<T>::get() const {
+    return !empty() ? link->get() : nullptr;
 }
 
 template <typename T>
-T* ScopedRef<T>::operator->() const {
+T* scoped_extender<T>::operator->() const {
     return get();
 }
 
 template <typename T>
-bool ScopedRef<T>::empty() const {
-    return resource == nullptr;
+bool scoped_extender<T>::empty() const {
+    return link == nullptr;
 }
 
 template <typename T>
-void ScopedRef<T>::reset() {
-    resource.reset();
+void scoped_extender<T>::reset() {
+    link.reset();
 }
 
 #endif // _SHAREABLE_UNIQUE_OWNERSHIP_IMPL_
