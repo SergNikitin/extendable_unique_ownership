@@ -23,14 +23,6 @@ T* unique_extendable_ptr<T>::resource_owner::operator->() const {
 
 
 template <typename T>
-unique_extendable_ptr<T>::unique_extendable_ptr(T* resource)
-    : resource(
-        std::make_shared<resource_owner>(
-            std::unique_ptr<T>(resource)
-        )
-    ) {}
-
-template <typename T>
 unique_extendable_ptr<T>::unique_extendable_ptr(std::unique_ptr<T> resource)
     : resource(
         std::make_shared<resource_owner>(
